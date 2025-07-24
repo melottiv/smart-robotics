@@ -25,6 +25,14 @@ a_show = '-show' in argv
 
 __all__ = ["start_node"]
 
+# Ingredient color map in BGR
+INGREDIENT_COLOR_MAP = {
+    "bread":  (102, 153, 204),
+    "cheese": (77, 230, 255),
+    "meat":   (26, 51, 102),
+    "salad":  (51, 153, 51),
+    "tomato": (26, 26, 204),
+}
 
 # Utility Functions
 
@@ -51,6 +59,31 @@ def get_element_distance(region, depth):
     else:
         return 0.012
 
+theta = 0  # Non più basato su screw perché non ci sono più
+
+# nuova funzione per classificare:
+def classify_ingredient_by_color(region, rgb_img):
+    min_dist = float("inf")
+    best_match = "unknown"
+
+    y, x = map(int, region.centroid)
+    radius = int(region.axis_major_length / 2)
+    mask = np.zeros(rgb_img.shape[:2], dtype=np.uint8)
+    cv2.circle(mask, (x, y), radius, 255, -1)
+    mean_color = cv2.mean(rgb_img, mask=mask)[:3]  # BGR
+
+    for ingredient, color in INGREDIENT_COLOR_MAP.items():
+        dist = np.linalg.norm(np.array(mean_color) - np.array(color))
+        if dist < min_dist:
+            min_dist = dist
+            best_match = ingredient
+
+    # Heuristica: se forma molto quadrata e solida, è cheese
+    if region.eccentricity < 0.5 and region.solidity > 0.9:
+        best_match = "cheese"
+
+    return best_match
+
 
 def process_item(item, rgb, depth):
     msg = ModelStates()
@@ -69,7 +102,7 @@ def process_item(item, rgb, depth):
     dir_z = np.array((0, 0, 1))
     dir_y = np.array((0, 1, 0))
     dir_x = np.array((1, 0, 0))
-    theta = (np.pi - region.orientation) if item['name'].startswith('screw') else 0
+    theta = 0  # rotazione fissa, senza screw
     rot_z = PyQuaternion(axis=dir_z, angle=theta)
     dir_y = rot_z.rotate(dir_y)
     dir_x = rot_z.rotate(dir_x)
@@ -97,12 +130,10 @@ def process_item(item, rgb, depth):
     rot = rot.inverse
     msg.pose = Pose(Point(*xyz), Quaternion(x=rot.x, y=rot.y, z=rot.z, w=rot.w))
 
-    # pub.publish(msg)
-    # print(msg)
     return msg
 
 
-def get_centers_object(rgb_image):
+def get_centers_object(rgb_image, original_img):
     _, binary_image = cv2.threshold(rgb_image, 150, 255, cv2.THRESH_BINARY)
     edges = cv2.Canny(binary_image, 50, 150)
     kernel = np.ones((3, 3), np.uint8)
@@ -118,50 +149,28 @@ def get_centers_object(rgb_image):
     positions = []
 
     for idx, region in enumerate(regions):
-        if (region.axis_major_length / region.axis_minor_length) > 1.8 or region.area > 400:
-            # is a screw
-            positions.append({'name': f'screw_{idx}',
-                              'element': region})
-        else:
-            # is a nut
-            positions.append({'name': f'nut_{idx}',
-                              'element': region})
+        name = classify_ingredient_by_color(region, original_img)
+        positions.append({'name': name, 'element': region})
+
     return positions
 
 
-# image processing
 def process_image(rgb, depth):
     img_draw = rgb.copy()
-    rgb = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
+    gray = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
     get_table_distance(depth)
-    get_origin(rgb)
+    get_origin(gray)
 
-    positions = get_centers_object(rgb)
+    positions = get_centers_object(gray, rgb)
     messages = []
 
     for pos in positions:
         if pos is not None:
-            messages.append(process_item(pos, rgb, depth))
-            if pos['name'].startswith('screw'):
-                region = pos['element']
-                y, x = map(int, region.centroid)
-                cv2.circle(img_draw, (x, y), 5, (255, 0, 0), -1)
-                radius = region.axis_major_length / 2
-                angle = np.pi / 2 - region.orientation
-                # Calculate the endpoint of the line
-                start_x = int(x - radius * np.cos(angle))
-                start_y = int(y - radius * np.sin(angle))
-                end_x = int(x + radius * np.cos(angle))
-                end_y = int(y + radius * np.sin(angle))
-                # Draw the line on the image
-                cv2.line(img_draw, (start_x, start_y), (end_x, end_y), (255, 0, 0), 2)
-                cv2.putText(img_draw, pos['name'], (x + 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                            (255, 0, 0), 2)
-            else:
-                y, x = map(int, pos['element'].centroid)
-                cv2.circle(img_draw, (x, y), 5, (0, 0, 255), -1)
-                cv2.putText(img_draw, pos['name'], (x + 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                            (0, 0, 255), 2)
+            messages.append(process_item(pos, gray, depth))
+            y, x = map(int, pos['element'].centroid)
+            cv2.circle(img_draw, (x, y), 5, (0, 255, 0), -1)
+            cv2.putText(img_draw, pos['name'], (x + 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
+                        (0, 255, 0), 2)
 
     msg = ModelStates()
     for mess in messages:
@@ -178,7 +187,6 @@ def process_image(rgb, depth):
 
 def process_callback(image_rgb, image_depth):
     t_start = time.time()
-    # from standard message image to opencv image
     rgb = CvBridge().imgmsg_to_cv2(image_rgb, "bgr8")
     depth = CvBridge().imgmsg_to_cv2(image_depth, "32FC1")
 
@@ -186,10 +194,8 @@ def process_callback(image_rgb, image_depth):
 
     print("Time:", time.time() - t_start)
     rospy.signal_shutdown('0')
-    pass
 
 
-# init node function
 def start_node():
     global pub
 
@@ -198,23 +204,18 @@ def start_node():
     rospy.init_node('vision')
 
     print("Subscribing to camera images")
-    # topics subscription
     rgb = message_filters.Subscriber("/camera/color/image_raw", Image)
     depth = message_filters.Subscriber("/camera/depth/image_raw", Image)
 
-    # publisher results
     pub = rospy.Publisher("nut_and_screw_detections", ModelStates, queue_size=1)
 
     print("Localization is starting.. ")
     print("(Waiting for images..)", end='\r'), print(end='\033[K')
 
-    # images synchronization
     synchro = message_filters.TimeSynchronizer([rgb, depth], 1, reset=True)
     synchro.registerCallback(process_callback)
 
-    # keep node always alive
     rospy.spin()
-    pass
 
 
 if __name__ == '__main__':
