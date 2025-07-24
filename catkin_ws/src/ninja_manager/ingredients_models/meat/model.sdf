@@ -8,7 +8,7 @@
 
       <!-- Inerzia e massa -->
 <inertial>
-  <mass>0.12</mass>
+  <mass>0.1</mass>
   <inertia>
     <ixx>0.00004</ixx>
     <iyy>0.00004</iyy>
@@ -22,10 +22,10 @@
       <!-- Collisione fisica -->
       <collision name="collision">
         <geometry>
-          <mesh>
-            <uri>model://meat/meshes/meat.stl</uri>
-            <scale>1 1 1</scale>
-          </mesh>
+          <cylinder>
+            <radius>0.03</radius>
+            <length>0.02</length>
+          </cylinder>
         </geometry>
         <surface>
           <contact>
@@ -47,10 +47,10 @@
       <!-- Aspetto visuale -->
       <visual name="visual">
         <geometry>
-          <mesh>
-            <uri>model://meat/meshes/meat.stl</uri>
-            <scale>1 1 1</scale>
-          </mesh>
+          <cylinder>
+            <radius>0.03</radius>
+            <length>0.02</length>
+          </cylinder>
         </geometry>
 	  <material>
 	    <ambient>0.4 0.2 0.1 1</ambient>     <!-- Marrone scuro -->

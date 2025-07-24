@@ -22,10 +22,10 @@
       <!-- Collisione fisica -->
       <collision name="collision">
         <geometry>
-          <mesh>
-            <uri>model://tomato/meshes/tomato.stl</uri>
-            <scale>1 1 1</scale>
-          </mesh>
+          <cylinder>
+            <radius>0.035</radius>
+            <length>0.01</length>
+          </cylinder>
         </geometry>
         <surface>
           <contact>
@@ -47,10 +47,10 @@
       <!-- Aspetto visuale -->
       <visual name="visual">
         <geometry>
-          <mesh>
-            <uri>model://tomato/meshes/tomato.stl</uri>
-            <scale>1 1 1</scale>
-          </mesh>
+          <cylinder>
+            <radius>0.035</radius>
+            <length>0.005</length>
+          </cylinder>
         </geometry>
   <material>
     <ambient>0.8 0.1 0.1 0.9</ambient>   <!-- Rosso vivo -->

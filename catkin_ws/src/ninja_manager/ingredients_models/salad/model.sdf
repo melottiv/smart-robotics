@@ -22,10 +22,10 @@
       <!-- Collisione fisica -->
       <collision name="collision">
         <geometry>
-          <mesh>
-            <uri>model://salad/meshes/salad.stl</uri>
-            <scale>1 1 1</scale>
-          </mesh>
+          <cylinder>
+            <radius>0.035</radius>
+            <length>0.005</length>
+          </cylinder>
         </geometry>
         <surface>
           <contact>
@@ -47,10 +47,10 @@
       <!-- Aspetto visuale -->
       <visual name="visual">
         <geometry>
-          <mesh>
-            <uri>model://salad/meshes/salad.stl</uri>
-            <scale>1 1 1</scale>
-          </mesh>
+          <cylinder>
+            <radius>0.035</radius>
+            <length>0.005</length>
+          </cylinder>
         </geometry>
   <material>
     <ambient>0.2 0.6 0.2 0.85</ambient>  <!-- Verde fresco, leggermente trasparente -->

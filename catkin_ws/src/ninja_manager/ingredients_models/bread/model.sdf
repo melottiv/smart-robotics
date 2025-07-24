@@ -1,31 +1,29 @@
 <?xml version="1.0" ?>
 <sdf version="1.6">
-  <model name="top_bread">
+  <model name="bread">
     <static>false</static>
 
     <link name="link">
       <pose>0 0 0 0 0 0</pose>
 
-      <!-- Inerzia e massa -->
-	<inertial>
-	  <mass>0.04</mass>
-	  <inertia>
-	    <ixx>0.000012</ixx>
-	    <iyy>0.000012</iyy>
-	    <izz>0.000025</izz>
-	    <ixy>0.0</ixy>
-	    <ixz>0.0</ixz>
-	    <iyz>0.0</iyz>
-	  </inertia>
-	</inertial>
+      <inertial>
+        <mass>0.04</mass>
+        <inertia>
+          <ixx>0.000012</ixx>
+          <iyy>0.000012</iyy>
+          <izz>0.000025</izz>
+          <ixy>0.0</ixy>
+          <ixz>0.0</ixz>
+          <iyz>0.0</iyz>
+        </inertia>
+      </inertial>
 
-      <!-- Collisione fisica -->
       <collision name="collision">
         <geometry>
-          <mesh>
-            <uri>model://top_bread/meshes/top_bread.stl</uri>
-            <scale>1 1 1</scale>
-          </mesh>
+          <cylinder>
+            <radius>0.04</radius>
+            <length>0.025</length>
+          </cylinder>
         </geometry>
         <surface>
           <contact>
@@ -44,20 +42,18 @@
         </surface>
       </collision>
 
-      <!-- Aspetto visuale -->
       <visual name="visual">
         <geometry>
-          <mesh>
-            <uri>model://top_bread/meshes/top_bread.stl</uri>
-            <scale>1 1 1</scale>
-          </mesh>
+          <cylinder>
+            <radius>0.04</radius>
+            <length>0.025</length>
+          </cylinder>
         </geometry>
         <material>
-	<material>
-	    <ambient>0.8 0.6 0.4 1</ambient> <!-- marroncino chiaro -->
-	    <diffuse>0.8 0.6 0.4 1</diffuse>
-	    <specular>0.1 0.1 0.1 1</specular>
-	  </material>
+          <ambient>0.8 0.6 0.4 1</ambient>
+          <diffuse>0.8 0.6 0.4 1</diffuse>
+          <specular>0.1 0.1 0.1 1</specular>
+        </material>
       </visual>
     </link>
   </model>

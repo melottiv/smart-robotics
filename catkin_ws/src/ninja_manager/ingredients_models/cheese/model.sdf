@@ -21,12 +21,11 @@
 
       <!-- Collisione fisica -->
       <collision name="collision">
-        <geometry>
-          <mesh>
-            <uri>model://cheese/meshes/cheese.stl</uri>
-            <scale>1 1 1</scale>
-          </mesh>
-        </geometry>
+	<geometry>
+	  <box>
+	    <size>0.07 0.07 0.003</size>
+	  </box>
+	</geometry>
         <surface>
           <contact>
             <collide_without_contact>false</collide_without_contact>
@@ -46,12 +45,11 @@
 
       <!-- Aspetto visuale -->
       <visual name="visual">
-        <geometry>
-          <mesh>
-            <uri>model://cheese/meshes/cheese.stl</uri>
-            <scale>1 1 1</scale>
-          </mesh>
-        </geometry>
+	<geometry>
+	  <box>
+	    <size>0.07 0.07 0.003</size>
+	  </box>
+	</geometry>
 	  <material>
 	    <ambient>1 0.9 0.3 1</ambient>       <!-- Giallo cheddar -->
 	    <diffuse>1 0.8 0.2 1</diffuse>
