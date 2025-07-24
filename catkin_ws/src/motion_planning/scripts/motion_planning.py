@@ -18,11 +18,11 @@ PKG_PATH = os.path.dirname(os.path.abspath(__file__))
 
 MODELS_INFO = {
     "screw": {
-        "home": [0.35, -0.20, 0.85],
+        "home": [0.35, -0.5, 0.85],
         "size": [0.0277128, 0.06, 0.024]
     },
     "nut": {
-        "home": [0.3, -0.70, 0.85],
+        "home": [0.35, -0.5, 0.85],
         "size": [0.0277128, 0.024, 0.012]
     }
 }
