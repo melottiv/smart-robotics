@@ -13,7 +13,7 @@ from pyquaternion import Quaternion as PyQuaternion
 import numpy as np
 from gazebo_ros_link_attacher.srv import SetStatic, SetStaticRequest, SetStaticResponse
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
-
+from collections import defaultdict
 PKG_PATH = os.path.dirname(os.path.abspath(__file__))
 
 MODELS_INFO = {
@@ -39,6 +39,7 @@ DEFAULT_PATH_TOLERANCE.name = "path_tolerance"
 DEFAULT_PATH_TOLERANCE.velocity = 10
 
 
+
 def get_gazebo_model_name(_model_name, _model_pose):
     """
         Get the name of the model inside gazebo. It is needed for link attacher plugin.
@@ -58,19 +59,18 @@ def get_gazebo_model_name(_model_name, _model_pose):
 
 
 def get_model_name(_gazebo_model_name):
-    if _gazebo_model_name.startswith("screw"):
-        return "screw"
-    elif _gazebo_model_name.startswith('nut'):
-        return "nut"
-    else:
-        return ""
+    ingredientList = ["bread", "cheese", "meat", "tomato", "salad"]
+    for ingredient in ingredientList:
+        if _gazebo_model_name.startswith(ingredient):
+            return ingredient
+    return ""
 
 
 def get_elements_pos(vision=False):
     # get _elements position reading vision topic
     if vision:
-        print("Reading from nut_and_screw_detections")
-        _elements = rospy.wait_for_message("/nut_and_screw_detections", ModelStates, timeout=None)
+        print("Reading from ingredient_detection")
+        _elements = rospy.wait_for_message("/ingredient_detection", ModelStates, timeout=None)
     else:
         models = rospy.wait_for_message("/gazebo/model_states", ModelStates, timeout=None)
         _elements = ModelStates()
@@ -176,6 +176,33 @@ def get_approach_quat(facing_direction, approach_angle):
 
     return quater
 
+def burger_sort(elements):
+    ingredient_order = ['bread', 'lettuce','meat', 'cheese', 'tomato', 'bread']
+
+    ingredient_map = defaultdict(list)
+
+    for name, pose in elements:
+        if name.startswith('bread'):
+            ingredient_map['bread'].append((name, pose))
+        elif name.startswith('meat'):
+            ingredient_map['meat'].append((name, pose))
+        elif name.startswith('lettuce'):
+            ingredient_map['lettuce'].append((name, pose))
+        elif name.startswith('cheese'):
+            ingredient_map['cheese'].append((name, pose))
+        elif name.startswith('tomato'):
+            ingredient_map['tomato'].append((name, pose))
+        else:
+            print(f"Unknown ingredient: {name}")
+
+    # Ora costruiamo la lista ordinata finale
+    ordered_models = []
+    for ingredient in ingredient_order:
+        if ingredient_map[ingredient]:
+            ordered_models.append(ingredient_map[ingredient].pop(0))
+        else:
+            print(f"Ingredient: {ingredient} is missing")
+    return ordered_models
 
 def get_approach_angle(model_quat, facing_direction):  # get gripper approach angle
     if facing_direction == (0, 0, 1):
@@ -201,7 +228,6 @@ def set_gripper(value):
     action_gripper.send_goal_and_wait(goal, rospy.Duration(10))
 
     return action_gripper.get_result()
-
 
 if __name__ == "__main__":
     print("Initializing node of kinematics")
@@ -231,9 +257,10 @@ if __name__ == "__main__":
     print("Waiting for detection of the ninja_models")
     rospy.sleep(0.5)
     elements = get_elements_pos(vision=True)
-    elements.sort(reverse=True, key=lambda a: (a[1].position.x, a[1].position.y))
 
-    for model_name, model_pose in elements:
+    ordered_models=burger_sort(elements)
+    
+    for model_name, model_pose in ordered_models:
         open_gripper()
         try:
             element_type = model_name.split('_')[0]

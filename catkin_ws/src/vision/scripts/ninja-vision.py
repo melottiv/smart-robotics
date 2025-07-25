@@ -11,6 +11,7 @@ from cv_bridge import CvBridge
 from gazebo_msgs.msg import ModelStates
 from geometry_msgs.msg import *
 from pyquaternion import Quaternion as PyQuaternion
+from scipy.spatial.distance import euclidean
 
 cam_point = (-0.55, -0.43, 1.80)
 table_height = 0.74
@@ -48,6 +49,25 @@ def get_origin(img):
 
 # ----------------- LOCALIZATION ----------------- #
 
+def get_color_masks(rgb_img):
+    hsv = cv2.cvtColor(rgb_img, cv2.COLOR_BGR2HSV)
+    masks = {}
+
+    color_ranges = {
+    "cheese": ([17, 150, 200], [37, 255, 255]),  # centro H=27
+    "salad":  ([51, 100, 120], [71, 255, 255]),  # centro H=61
+    "meat":   ([0, 150,  80], [19, 255, 180]),   # centro H=9
+    "bread":  ([5, 100, 160], [25, 200, 255]),   # centro H=15
+    "tomato": ([0, 150, 180], [10, 255, 255]),   # centro H=0
+    }
+
+    for name, (lower, upper) in color_ranges.items():
+        lower_np = np.array(lower, dtype=np.uint8)
+        upper_np = np.array(upper, dtype=np.uint8)
+        mask = cv2.inRange(hsv, lower_np, upper_np)
+        masks[name] = mask
+
+    return masks
 
 def get_element_distance(region, depth):
     y, x = map(int, region.centroid)
@@ -59,30 +79,38 @@ def get_element_distance(region, depth):
     else:
         return 0.012
 
-theta = 0  # Non più basato su screw perché non ci sono più
+theta = 0  
 
-# nuova funzione per classificare:
 def classify_ingredient_by_color(region, rgb_img):
-    min_dist = float("inf")
-    best_match = "unknown"
-
     y, x = map(int, region.centroid)
     radius = int(region.axis_major_length / 2)
     mask = np.zeros(rgb_img.shape[:2], dtype=np.uint8)
     cv2.circle(mask, (x, y), radius, 255, -1)
-    mean_color = cv2.mean(rgb_img, mask=mask)[:3]  # BGR
+    mean_color_bgr = cv2.mean(rgb_img, mask=mask)[:3]
+    mean_color_hsv = cv2.cvtColor(np.uint8([[mean_color_bgr]]), cv2.COLOR_BGR2HSV)[0][0]
 
-    for ingredient, color in INGREDIENT_COLOR_MAP.items():
-        dist = np.linalg.norm(np.array(mean_color) - np.array(color))
+    min_dist = float("inf")
+    best_match = "unknown"
+
+    for name, color_bgr in INGREDIENT_COLOR_MAP.items():
+        hsv = cv2.cvtColor(np.uint8([[color_bgr]]), cv2.COLOR_BGR2HSV)[0][0]
+        # Pesa meno il valore (luminosità)
+        dist = np.linalg.norm([
+            mean_color_hsv[0] - hsv[0],   # Hue
+            mean_color_hsv[1] - hsv[1],   # Saturation
+            0.3 * (mean_color_hsv[2] - hsv[2])  # Value/luminosità pesa meno
+        ])
         if dist < min_dist:
             min_dist = dist
-            best_match = ingredient
+            best_match = name
 
     # Heuristica: se forma molto quadrata e solida, è cheese
     if region.eccentricity < 0.5 and region.solidity > 0.9:
         best_match = "cheese"
-
+        
+    print(f"[DEBUG] {region.label}: mean HSV={mean_color_hsv} → {best_match}")
     return best_match
+
 
 
 def process_item(item, rgb, depth):
@@ -102,7 +130,7 @@ def process_item(item, rgb, depth):
     dir_z = np.array((0, 0, 1))
     dir_y = np.array((0, 1, 0))
     dir_x = np.array((1, 0, 0))
-    theta = 0  # rotazione fissa, senza screw
+    theta = 0  
     rot_z = PyQuaternion(axis=dir_z, angle=theta)
     dir_y = rot_z.rotate(dir_y)
     dir_x = rot_z.rotate(dir_x)
@@ -132,36 +160,53 @@ def process_item(item, rgb, depth):
 
     return msg
 
+def merge_close_regions(regions, min_dist=10):
+    merged = []
+    used = set()
+    for i, r1 in enumerate(regions):
+        if i in used:
+            continue
+        for j, r2 in enumerate(regions):
+            if j <= i or j in used:
+                continue
+            if euclidean(r1.centroid, r2.centroid) < min_dist:
+                # Merge bounding box (grezzo)
+                minr = min(r1.bbox[0], r2.bbox[0])
+                minc = min(r1.bbox[1], r2.bbox[1])
+                maxr = max(r1.bbox[2], r2.bbox[2])
+                maxc = max(r1.bbox[3], r2.bbox[3])
+                bbox_mask = np.zeros(labels.shape, dtype=np.uint8)
+                bbox_mask[minr:maxr, minc:maxc] = 1
+                label = measure.label(bbox_mask, connectivity=2)
+                region = measure.regionprops(label)[0]
+                merged.append(region)
+                used.update([i, j])
+                break
+        else:
+            merged.append(r1)
+    return merged
 
-def get_centers_object(rgb_image, original_img):
-    _, binary_image = cv2.threshold(rgb_image, 150, 255, cv2.THRESH_BINARY)
-    edges = cv2.Canny(binary_image, 50, 150)
-    kernel = np.ones((3, 3), np.uint8)
-    img_dilation = cv2.dilate(edges, kernel, iterations=2)
-    height, width = binary_image.shape
-    roi_mask = np.ones((height, width))
-    start_x, start_y = 0, height - 60
-    end_x, end_y = 130, height
-    roi_mask[start_y:end_y, start_x:end_x] = 0
-    img_dilation = img_dilation * roi_mask
-    labels = measure.label(img_dilation, connectivity=2)
-    regions = measure.regionprops(labels)
+def get_centers_object_color_based(rgb_img):
+    masks = get_color_masks(rgb_img)
     positions = []
 
-    for idx, region in enumerate(regions):
-        name = classify_ingredient_by_color(region, original_img)
-        positions.append({'name': name, 'element': region})
+    for name, mask in masks.items():
+        labels = measure.label(mask, connectivity=2)
+        regions = measure.regionprops(labels)
+
+        for region in regions:
+            if region.area < 50:  # ignora rumore
+                continue
+            positions.append({'name': name, 'element': region})
 
     return positions
-
-
 def process_image(rgb, depth):
     img_draw = rgb.copy()
     gray = cv2.cvtColor(rgb, cv2.COLOR_BGR2GRAY)
     get_table_distance(depth)
     get_origin(gray)
 
-    positions = get_centers_object(gray, rgb)
+    positions = get_centers_object_color_based(rgb)
     messages = []
 
     for pos in positions:
@@ -170,7 +215,7 @@ def process_image(rgb, depth):
             y, x = map(int, pos['element'].centroid)
             cv2.circle(img_draw, (x, y), 5, (0, 255, 0), -1)
             cv2.putText(img_draw, pos['name'], (x + 10, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5,
-                        (0, 255, 0), 2)
+                        (255, 255, 255), 2)
 
     msg = ModelStates()
     for mess in messages:
@@ -207,7 +252,7 @@ def start_node():
     rgb = message_filters.Subscriber("/camera/color/image_raw", Image)
     depth = message_filters.Subscriber("/camera/depth/image_raw", Image)
 
-    pub = rospy.Publisher("nut_and_screw_detections", ModelStates, queue_size=1)
+    pub = rospy.Publisher("ingredient_detection", ModelStates, queue_size=1,latch=True)
 
     print("Localization is starting.. ")
     print("(Waiting for images..)", end='\r'), print(end='\033[K')
