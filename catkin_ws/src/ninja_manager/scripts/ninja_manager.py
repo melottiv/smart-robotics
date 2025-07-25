@@ -25,11 +25,11 @@ min_space = 0.010
 min_distance = 0.15
 
 ingredientDict = {
-    'bread':    (0, (0.08, 0.08, 0.025)),      # cilindro: diametro 8cm
-    'tomato':   (1, (0.07, 0.07, 0.01)),      # cilindro: diametro 7cm
-    'cheese':   (2, (0.075, 0.075, 0.003)),    # cubo 7.5cm x 7.5cm x 0.3cm
-    'meat':     (3, (0.075, 0.075, 0.02)),     # cilindro: diametro 7.5cm
-    'salad':    (4, (0.07, 0.07, 0.005))       # cilindro: diametro 7cm
+    'bread':    (0, (0.06, 0.06, 0.025)),     
+    'tomato':   (1, (0.04, 0.04, 0.01)),      
+    'cheese':   (2, (0.06, 0.06, 0.003)),    
+    'meat':     (3, (0.05, 0.05, 0.015)),     
+    'salad':    (4, (0.06, 0.06, 0.005))       
 }
 
 
@@ -131,7 +131,7 @@ def set_up_area():
         spawn_model(spawn_name, Pose(Point(*spawn_pos), Quaternion(0, 0, 0, 1)))
 
     try:
-        spawn_all_ingredients()   # <-- qui 4 spazi di indentazione
+        spawn_all_ingredients()   
     except PoseError:
         print("[Error]: no space in spawning area")
 
