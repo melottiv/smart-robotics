@@ -16,15 +16,14 @@ from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 from collections import defaultdict
 PKG_PATH = os.path.dirname(os.path.abspath(__file__))
 
-MODELS_INFO = {
-    "screw": {
-        "home": [0.35, -0.5, 0.85],
-        "size": [0.0277128, 0.06, 0.024]
-    },
-    "nut": {
-        "home": [0.35, -0.5, 0.85],
-        "size": [0.0277128, 0.024, 0.012]
-    }
+PILING_LOCATION=[0.35, -0.5, 0.85]
+
+MODEL_SIZES = {
+    'bread':    (0.06, 0.06, 0.025),     
+    'tomato':   (0.04, 0.04, 0.01),      
+    'cheese':   (0.06, 0.06, 0.003),    
+    'meat':     (0.05, 0.05, 0.015),     
+    'salad':    (0.06, 0.06, 0.005)      
 }
 
 SURFACE_Z = 0.774
@@ -96,7 +95,7 @@ def straighten(_model_pose, _gazebo_model_name):
         z=_model_pose.orientation.z,
         w=_model_pose.orientation.w)
 
-    _model_size = MODELS_INFO[get_model_name(_gazebo_model_name)]["size"]
+    _model_size = MODEL_SIZES[get_model_name(_gazebo_model_name)]
 
     """
         Calculate approach quaternion and target quaternion
@@ -105,7 +104,7 @@ def straighten(_model_pose, _gazebo_model_name):
     facing_direction = (0, 0, 1)
     approach_angle = get_approach_angle(model_quaternion, facing_direction)
 
-    print(f"Lego is facing {facing_direction}")
+    print(f"Ingredient is facing {facing_direction}")
     print(f"Angle of approaching measures {approach_angle:.2f} deg")
 
     # Calculate approach quat
@@ -114,13 +113,11 @@ def straighten(_model_pose, _gazebo_model_name):
     # Get above the object
     controller.move_to(_x, _y, target_quat=approach_quat)
 
-    """
-        Grip the model
-    """
-    if _gazebo_model_name.startswith('nut'):
-        closure = 0.024
-    else:
-        closure = 0.017
+    diameter = max(_model_size[0], _model_size[1])
+    CLOSURE_FACTOR = 0.9  # da regolare con test empirici
+    closure = diameter * CLOSURE_FACTOR
+
+    # Afferraggio
     controller.move_to(z=SURFACE_Z, target_quat=approach_quat)
     close_gripper(_gazebo_model_name, closure)
 
@@ -177,7 +174,7 @@ def get_approach_quat(facing_direction, approach_angle):
     return quater
 
 def burger_sort(elements):
-    ingredient_order = ['bread', 'lettuce','meat', 'cheese', 'tomato', 'bread']
+    ingredient_order = ['bread', 'salad','meat', 'cheese', 'tomato', 'bread']
 
     ingredient_map = defaultdict(list)
 
@@ -186,8 +183,8 @@ def burger_sort(elements):
             ingredient_map['bread'].append((name, pose))
         elif name.startswith('meat'):
             ingredient_map['meat'].append((name, pose))
-        elif name.startswith('lettuce'):
-            ingredient_map['lettuce'].append((name, pose))
+        elif name.startswith('salad'):
+            ingredient_map['salad'].append((name, pose))
         elif name.startswith('cheese'):
             ingredient_map['cheese'].append((name, pose))
         elif name.startswith('tomato'):
@@ -259,13 +256,12 @@ if __name__ == "__main__":
     elements = get_elements_pos(vision=True)
 
     ordered_models=burger_sort(elements)
-    
+    x, y, z = PILING_LOCATION
     for model_name, model_pose in ordered_models:
         open_gripper()
         try:
             element_type = model_name.split('_')[0]
-            model_home = MODELS_INFO[element_type]["home"]
-            model_size = MODELS_INFO[element_type]["size"]
+            model_size = MODEL_SIZES[element_type]
         except ValueError as e:
             print(f"Model name {model_name} was not recognized!")
             continue
@@ -285,7 +281,7 @@ if __name__ == "__main__":
         """
             Go to destination
         """
-        x, y, z = model_home
+        
         print(f"Moving model {model_name} to {x} {y} {z}")
 
         controller.move_to(x, y, target_quat=DEFAULT_QUAT * PyQuaternion(axis=[0, 0, 1], angle=math.pi / 2))
