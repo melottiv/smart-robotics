@@ -114,7 +114,7 @@ def straighten(_model_pose, _gazebo_model_name):
     controller.move_to(_x, _y, target_quat=approach_quat)
 
     diameter = max(_model_size[0], _model_size[1])
-    CLOSURE_FACTOR = 0.9  # da regolare con test empirici
+    CLOSURE_FACTOR = 1  # da regolare con test empirici
     closure = diameter * CLOSURE_FACTOR
 
     # Afferraggio
@@ -192,7 +192,6 @@ def burger_sort(elements):
         else:
             print(f"Unknown ingredient: {name}")
 
-    # Ora costruiamo la lista ordinata finale
     ordered_models = []
     for ingredient in ingredient_order:
         if ingredient_map[ingredient]:
@@ -200,6 +199,7 @@ def burger_sort(elements):
         else:
             print(f"Ingredient: {ingredient} is missing")
     return ordered_models
+
 
 def get_approach_angle(model_quat, facing_direction):  # get gripper approach angle
     if facing_direction == (0, 0, 1):
@@ -225,6 +225,7 @@ def set_gripper(value):
     action_gripper.send_goal_and_wait(goal, rospy.Duration(10))
 
     return action_gripper.get_result()
+
 
 if __name__ == "__main__":
     print("Initializing node of kinematics")
@@ -257,6 +258,7 @@ if __name__ == "__main__":
 
     ordered_models=burger_sort(elements)
     x, y, z = PILING_LOCATION
+    dz=0
     for model_name, model_pose in ordered_models:
         open_gripper()
         try:
@@ -276,7 +278,7 @@ if __name__ == "__main__":
 
         # Straighten lego
         straighten(model_pose, gazebo_model_name)
-        controller.move(dz=0.15)
+        controller.move(dz=0.10)
 
         """
             Go to destination
@@ -286,10 +288,12 @@ if __name__ == "__main__":
 
         controller.move_to(x, y, target_quat=DEFAULT_QUAT * PyQuaternion(axis=[0, 0, 1], angle=math.pi / 2))
         # Lower the object and release
-        controller.move_to(x, y, z)
+        controller.move_to(x, y, z)     # forse cambiare qui per mollare gli oggetti più vicino al panino??
         # set_model_fixed(gazebo_model_name)
         open_gripper(gazebo_model_name)
-        controller.move(dz=0.15)
+
+        controller.move(dz=dz)
+        dz+=model_size[2]
 
         if controller.gripper_pose[0][1] > -0.3 and controller.gripper_pose[0][0] > 0:
             controller.move_to(*DEFAULT_POS, DEFAULT_QUAT)
