@@ -16,7 +16,7 @@ from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 from collections import defaultdict
 PKG_PATH = os.path.dirname(os.path.abspath(__file__))
 
-PILING_LOCATION=[0.35, -0.5, 0.85]
+PILING_LOCATION=[0.35, -0.5, 0.774]
 
 MODEL_SIZES = {
     'bread':    (0.06, 0.06, 0.025),     
@@ -258,7 +258,7 @@ if __name__ == "__main__":
 
     ordered_models=burger_sort(elements)
     x, y, z = PILING_LOCATION
-    dz=0
+    dz=0.01
     for model_name, model_pose in ordered_models:
         open_gripper()
         try:
@@ -288,11 +288,11 @@ if __name__ == "__main__":
 
         controller.move_to(x, y, target_quat=DEFAULT_QUAT * PyQuaternion(axis=[0, 0, 1], angle=math.pi / 2))
         # Lower the object and release
-        controller.move_to(x, y, z)     # forse cambiare qui per mollare gli oggetti più vicino al panino??
+        controller.move_to(x, y, z+dz)     # forse cambiare qui per mollare gli oggetti più vicino al panino??
         # set_model_fixed(gazebo_model_name)
         open_gripper(gazebo_model_name)
 
-        controller.move(dz=dz)
+        controller.move(dz=0.10)
         dz+=model_size[2]
 
         if controller.gripper_pose[0][1] > -0.3 and controller.gripper_pose[0][0] > 0:

@@ -13,6 +13,8 @@ from gazebo_msgs.srv import SpawnModel, DeleteModel
 from geometry_msgs.msg import *
 from tf.transformations import quaternion_from_euler
 import random
+from gazebo_msgs.srv import DeleteModel, DeleteModelRequest
+
 
 path = rospkg.RosPack().get_path("ninja_manager")
 
@@ -113,7 +115,16 @@ def spawn_all_ingredients():
         spawned_ingredients.append((name, model_type, pos, radius))
         counters[idx] += 1
 
-
+def delete_model(model_name):
+    rospy.wait_for_service('/gazebo/delete_model')
+    try:
+        delete_srv = rospy.ServiceProxy('/gazebo/delete_model', DeleteModel)
+        req = DeleteModelRequest()
+        req.model_name = model_name
+        delete_srv(req)
+        rospy.loginfo(f"Deleted model: {model_name}")
+    except rospy.ServiceException as e:
+        rospy.logerr(f"Failed to delete model {model_name}: {e}")
 
 # main function setup area and level manager
 def set_up_area():

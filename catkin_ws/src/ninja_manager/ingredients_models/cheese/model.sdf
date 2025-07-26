@@ -8,7 +8,7 @@
 
       <!-- Inerzia e massa -->
 	<inertial>
-	  <mass>0.05</mass>
+	  <mass>0.2</mass>
 	  <inertia>
 	    <ixx>0.000004</ixx>
 	    <iyy>0.000004</iyy>
@@ -30,7 +30,7 @@
 	    <contact>
 	      <collide_without_contact>false</collide_without_contact>
 	      <ode>
-		<max_vel>0.01</max_vel>
+		<max_vel>0</max_vel>
 		<min_depth>0.001</min_depth>
 	      </ode>
 	    </contact>
