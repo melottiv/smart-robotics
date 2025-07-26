@@ -10,14 +10,15 @@
 <inertial>
   <mass>0.5</mass>
   <inertia>
-    <ixx>0.00004</ixx>
-    <iyy>0.00004</iyy>
-    <izz>0.00008</izz>
+    <ixx>0.00008542</ixx>
+    <iyy>0.00008542</iyy>
+    <izz>0.00015625</izz>
     <ixy>0.0</ixy>
     <ixz>0.0</ixz>
     <iyz>0.0</iyz>
   </inertia>
 </inertial>
+
 
       <!-- Collisione fisica -->
 <collision name="collision">
@@ -41,8 +42,8 @@
 	    </bounce>
 	    <friction>
 	      <ode>
-		<mu>2.0</mu>
-		<mu2>2.0</mu2>
+		<mu>10.0</mu>
+		<mu2>10.0</mu2>
 	      </ode>
 	    </friction>
 	  </surface>

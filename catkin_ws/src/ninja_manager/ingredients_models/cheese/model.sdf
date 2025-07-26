@@ -7,17 +7,17 @@
       <pose>0 0 0 0 0 0</pose>
 
       <!-- Inerzia e massa -->
-	<inertial>
-	  <mass>0.2</mass>
-	  <inertia>
-	    <ixx>0.000004</ixx>
-	    <iyy>0.000004</iyy>
-	    <izz>0.000008</izz>
-	    <ixy>0.0</ixy>
-	    <ixz>0.0</ixz>
-	    <iyz>0.0</iyz>
-	  </inertia>
-	</inertial>
+<inertial>
+  <mass>0.2</mass>
+  <inertia>
+    <ixx>0.00006015</ixx>
+    <iyy>0.00006015</iyy>
+    <izz>0.00012</izz>
+    <ixy>0.0</ixy>
+    <ixz>0.0</ixz>
+    <iyz>0.0</iyz>
+  </inertia>
+</inertial>
 
       <!-- Collisione fisica -->
 	<collision name="collision">
@@ -40,8 +40,8 @@
 	    </bounce>
 	    <friction>
 	      <ode>
-		<mu>2.0</mu>
-		<mu2>2.0</mu2>
+		<mu>10.0</mu>
+		<mu2>10.0</mu2>
 	      </ode>
 	    </friction>
 	  </surface>
