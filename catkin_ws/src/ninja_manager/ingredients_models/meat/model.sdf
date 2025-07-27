@@ -1,4 +1,4 @@
-<?xml version="1.0" ?>
+<?xml version='1.0' encoding='utf-8'?>
 <sdf version="1.6">
   <model name="meat">
     <static>false</static>
@@ -6,13 +6,13 @@
     <link name="link">
       <pose>0 0 0 0 0 0</pose>
 
-      <!-- Inerzia e massa -->
+      
 <inertial>
-  <mass>0.5</mass>
+  <mass>1</mass>
   <inertia>
-    <ixx>0.00008542</ixx>
-    <iyy>0.00008542</iyy>
-    <izz>0.00015625</izz>
+    <ixx>0.00025771</ixx>
+    <iyy>0.00025771</iyy>
+    <izz>0.00046019</izz>
     <ixy>0.0</ixy>
     <ixz>0.0</ixz>
     <iyz>0.0</iyz>
@@ -20,7 +20,7 @@
 </inertial>
 
 
-      <!-- Collisione fisica -->
+      
 <collision name="collision">
 	  <geometry>
           <cylinder>
@@ -49,7 +49,7 @@
 	  </surface>
 	</collision>
 
-      <!-- Aspetto visuale -->
+      
       <visual name="visual">
         <geometry>
           <cylinder>
@@ -58,7 +58,7 @@
           </cylinder>
         </geometry>
 	  <material>
-	    <ambient>0.4 0.2 0.1 1</ambient>     <!-- Marrone scuro -->
+	    <ambient>0.4 0.2 0.1 1</ambient>     
 	    <diffuse>0.5 0.25 0.15 1</diffuse>
 	    <specular>0.1 0.1 0.1 1</specular>
 	    <emissive>0 0 0 1</emissive>
@@ -67,4 +67,3 @@
     </link>
   </model>
 </sdf>
-

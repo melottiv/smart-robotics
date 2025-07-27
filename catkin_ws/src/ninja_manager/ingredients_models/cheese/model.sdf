@@ -1,4 +1,4 @@
-<?xml version="1.0" ?>
+<?xml version='1.0' encoding='utf-8'?>
 <sdf version="1.6">
   <model name="cheese">
     <static>false</static>
@@ -6,20 +6,20 @@
     <link name="link">
       <pose>0 0 0 0 0 0</pose>
 
-      <!-- Inerzia e massa -->
+      
 <inertial>
-  <mass>0.2</mass>
+  <mass>1</mass>
   <inertia>
-    <ixx>0.00006015</ixx>
-    <iyy>0.00006015</iyy>
-    <izz>0.00012</izz>
+    <ixx>0.00016240</ixx>
+    <iyy>0.00016240</iyy>
+    <izz>0.00032400</izz>
     <ixy>0.0</ixy>
     <ixz>0.0</ixz>
     <iyz>0.0</iyz>
   </inertia>
 </inertial>
 
-      <!-- Collisione fisica -->
+      
 	<collision name="collision">
 	  <geometry>
 	  <box>
@@ -48,7 +48,7 @@
 	</collision>
 
 
-      <!-- Aspetto visuale -->
+      
       <visual name="visual">
 	<geometry>
 	  <box>
@@ -56,7 +56,7 @@
 	  </box>
 	</geometry>
 	  <material>
-	    <ambient>1 0.9 0.3 1</ambient>       <!-- Giallo cheddar -->
+	    <ambient>1 0.9 0.3 1</ambient>       
 	    <diffuse>1 0.8 0.2 1</diffuse>
 	    <specular>0.3 0.3 0.1 1</specular>
 	    <emissive>0 0 0 1</emissive>
@@ -65,4 +65,3 @@
     </link>
   </model>
 </sdf>
-
