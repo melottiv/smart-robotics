@@ -2,8 +2,7 @@
 
 import os
 import math
-import copy
-import json
+import spacy
 import actionlib
 import control_msgs.msg
 from controller import ArmController
@@ -14,7 +13,6 @@ import numpy as np
 from gazebo_ros_link_attacher.srv import SetStatic, SetStaticRequest, SetStaticResponse
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
 from collections import defaultdict
-from openai import OpenAI
 import json
 
 
@@ -239,33 +237,53 @@ def set_model_fixed(model_name):
     req.link_name_2="link"
     attach_srv.call(req)
 
+import spacy
+
 def get_ingredient_list_from_user():
-    print("\nHai a disposizione questi ingredienti:")
-    print("  bread, meat, cheese, tomato, salad")
-    print("Scrivi la lista separata da virgole, es:")
-    print("  bread, meat, meat, cheese, bread")
-    user_input = input("\nIngredienti del panino (dal basso verso l’alto): ")
+    print("\nHello! What kind of burger would you like?")
+    print("\n\tAvailable ingredients are: bread, meat, cheese, tomato, and salad")
+    nlp = spacy.load("en_core_web_sm") 
+    user_input = input("\nBurger description: ")
 
-    # Pulisci e normalizza
-    raw_ingredients = [item.strip().lower() for item in user_input.split(",")]
+    ingredients = {"bread", "meat", "cheese", "tomato", "salad"}
+    doc = nlp(user_input.lower())
+    
+    explicitly_included = set()
+    explicitly_excluded = set()
 
-    valid_ingredients = {"bread", "meat", "cheese", "tomato", "salad"}
-    filtered_ingredients = []
+    for token in doc:
+        word = token.text.lower()
+        if word in ingredients:
+            negated = False
 
-    for ing in raw_ingredients:
-        if ing in valid_ingredients:
-            filtered_ingredients.append(ing)
-        else:
-            print(f" Ingrediente non valido ignorato: {ing}")
+            # Controllo figli (es. "no cheese")
+            for child in token.children:
+                if child.dep_ in {"neg", "det"} and child.text.lower() in {"no", "not", "any", "without","except"}:
+                    negated = True
 
-    if not filtered_ingredients:
-        print(" Nessun ingrediente valido fornito. Uso fallback.")
-        return ['bread', 'meat', 'cheese', 'bread']
+            # Controllo parole a sinistra (es. "without meat")
+            for left in token.lefts:
+                if left.text.lower() in {"no", "not", "any", "without","except"}:
+                    negated = True
 
-    return filtered_ingredients
+            # Controllo anche antenati (es. "I don't want cheese")
+            for ancestor in token.ancestors:
+                for child in ancestor.children:
+                    if child.dep_ == "neg":
+                        negated = True
+
+            if negated:
+                explicitly_excluded.add(word)
+            else:
+                explicitly_included.add(word)
+
+    if explicitly_included:
+        return list(explicitly_included)
+    else:
+        return list(ingredients - explicitly_excluded)
 
 
-
+"""
 def get_ingredient_list_from_gpt():
     prompt = (
         "Sei un assistente per un robot che costruisce panini.\n"
@@ -296,7 +314,7 @@ def get_ingredient_list_from_gpt():
     except Exception as e:
         print("Errore interpretando la risposta GPT, uso fallback:", e)
         return ['bread', 'meat', 'cheese', 'tomato', 'bread']
-
+"""
 
 def burger_sort_gpt(elements, ingredient_order):
     ingredient_map = defaultdict(list)
@@ -317,6 +335,23 @@ def burger_sort_gpt(elements, ingredient_order):
     return ordered_models
 
 
+def order_elements_simple(user_ingredients, elements):
+    filtered = [el for el in elements if el[0] in user_ingredients]
+
+    # Ordina per posizione
+    filtered_sorted = sorted(filtered, key=lambda x: x[1].position.x)
+
+    # Estrai tutte le occorrenze di pane e rimuovile temporaneamente
+    bread_elements = [el for el in filtered_sorted if el[0] == "bread"]
+    others = [el for el in filtered_sorted if el[0] != "bread"]
+
+    if bread_elements:
+        first_bread = bread_elements[0]
+        last_bread = bread_elements[-1]
+        # metti il primo pane all'inizio, l'ultimo alla fine
+        return [first_bread] + others + [last_bread]
+    else:
+        return filtered_sorted
 
 
 if __name__ == "__main__":
@@ -349,8 +384,7 @@ if __name__ == "__main__":
     elements = get_elements_pos(vision=True)
 
     user_ingredients = get_ingredient_list_from_user()
-    ordered_models = burger_sort_gpt(elements, user_ingredients)
-
+    ordered_models = order_elements_simple(user_ingredients=user_ingredients,elements=elements)
     x, y = PILING_LOCATION[0], PILING_LOCATION[1]
     cumulative_height = 0.0
     last_gazebo_model_name= "ground_plane"

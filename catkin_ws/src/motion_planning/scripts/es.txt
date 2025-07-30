@@ -1,0 +1,14 @@
+Burger description: don't give me salad, fuck you
+['bread', 'tomato', 'cheese', 'meat']
+
+Burger description: give me everything
+['salad', 'cheese', 'meat', 'bread', 'tomato']
+
+Burger description: just meat, bread and salad
+['meat', 'bread', 'salad']
+
+Burger description: put meat, cheese, salad but no tomato
+['meat', 'salad', 'cheese']
+
+Burger description: if you put cheese i will literally kill you
+['cheese']
