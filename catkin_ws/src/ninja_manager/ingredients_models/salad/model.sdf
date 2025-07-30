@@ -8,14 +8,14 @@
 
       
 <inertial>
-  <mass>1</mass>
+  <mass>0.70685835</mass>
   <inertia>
     <ixx>0.00016052</ixx>
     <iyy>0.00016052</iyy>
     <izz>0.00031809</izz>
-    <ixy>0.0</ixy>
-    <ixz>0.0</ixz>
-    <iyz>0.0</iyz>
+    <ixy>0.00000000</ixy>
+    <ixz>0.00000000</ixz>
+    <iyz>0.00000000</iyz>
   </inertia>
 </inertial>
 
@@ -42,8 +42,8 @@
 	    </bounce>
 	    <friction>
 	      <ode>
-		<mu>10.0</mu>
-		<mu2>10.0</mu2>
+		<mu>1.5</mu>
+		<mu2>1.5</mu2>
 	      </ode>
 	    </friction>
 	  </surface>

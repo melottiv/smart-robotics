@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import sys
 import math
+import os
 
 def compute_box_inertia(mass, width, height, depth):
     i_xx = (1 / 12) * mass * (height**2 + depth**2)
@@ -13,150 +14,93 @@ def compute_cylinder_inertia(mass, radius, height):
     i_zz = 0.5 * mass * radius**2
     return i_xx_iyy, i_xx_iyy, i_zz
 
-def update_with_density(file_path,density):
+def update_with_density(file_path, density):
     tree = ET.parse(file_path)
     root = tree.getroot()
-
-    # Namespace fix (if any)
     ET.register_namespace('', "http://sdformat.org/sdf/1.6")
 
-    # Trova <link>/<inertial>
+    geometry_type = None
+    ixx = iyy = izz = mass = 0
+
+    for link in root.iter('link'):
+        for collision in link.findall('collision'):
+            geom = collision.find('geometry')
+
+            if geom is None:
+                continue
+
+            # === Cylinder ===
+            cyl = geom.find('cylinder')
+            if cyl is not None:
+                radius = float(cyl.find('radius').text)
+                length = float(cyl.find('length').text)
+                volume = math.pi * radius**2 * length
+                mass = volume * density
+                ixx, iyy, izz = compute_cylinder_inertia(mass, radius, length)
+                geometry_type = "cylinder"
+                break
+
+            # === Box ===
+            box = geom.find('box')
+            if box is not None:
+                size_str = box.find('size').text
+                size_vals = list(map(float, size_str.strip().split()))
+                if len(size_vals) != 3:
+                    raise ValueError("Box deve avere 3 dimensioni.")
+                width, height, depth = size_vals
+                volume = width * height * depth
+                mass = volume * density
+                ixx, iyy, izz = compute_box_inertia(mass, width, height, depth)
+                geometry_type = "box"
+                break
+
+    if geometry_type is None:
+        raise ValueError(f"❌ Geometria non trovata nel file: {file_path}")
+
+    # Inserisce massa e inerzia
     for inertial in root.iter('inertial'):
-        # Update mass
         mass_element = inertial.find('mass')
+        if mass_element is None:
+            mass_element = ET.SubElement(inertial, 'mass')
+        mass_element.text = f"{mass:.8f}"
 
-        # Trova dimensioni dal cilindro
-        geometry_type = None
-        ixx = iyy = izz = None  # valori di default
-
-        for link in root.iter('link'):
-            for collision in link.findall('collision'):
-                geom = collision.find('geometry')
-
-                # === Caso cilindro ===
-                cyl = geom.find('cylinder')
-                if cyl is not None:
-                    radius = float(cyl.find('radius').text)
-                    length = float(cyl.find('length').text)
-                    vol=pow(radius,2)*math.pi*length
-                    ixx, iyy, izz = compute_cylinder_inertia(vol*density, radius, length)
-                    geometry_type = "cylinder"
-                    break
-
-                # === Caso box ===
-                box = geom.find('box')
-                if box is not None:
-                    size_str = box.find('size').text  # es. "0.1 0.2 0.05"
-                    size_vals = list(map(float, size_str.strip().split()))
-                    if len(size_vals) != 3:
-                        raise ValueError("Il box deve avere tre dimensioni (x y z)!")
-                    width, height, depth = size_vals
-                    vol=width*height*depth
-                    ixx, iyy, izz = compute_box_inertia(vol*density, width, height, depth)
-                    geometry_type = "box"
-                    break
-
-        # Se non ho trovato nulla
-        if geometry_type is None:
-            raise ValueError("Diocanestro, non trovo né un cilindro né un box nel file SDF!")
-
-        print(f"✔️ Geometria riconosciuta: {geometry_type}, inerzia aggiornata.")
-
-        # Scrittura dei valori nella sezione inertia
         inertia = inertial.find('inertia')
-        inertia.find('ixx').text = f"{ixx:.8f}"
-        inertia.find('iyy').text = f"{iyy:.8f}"
-        inertia.find('izz').text = f"{izz:.8f}"
-        inertia.find('ixy').text = "0.0"
-        inertia.find('ixz').text = "0.0"
-        inertia.find('iyz').text = "0.0"
+        if inertia is None:
+            inertia = ET.SubElement(inertial, 'inertia')
 
-    # Salva il nuovo file
+        def set_inertia_tag(tag, value):
+            tag_elem = inertia.find(tag)
+            if tag_elem is None:
+                tag_elem = ET.SubElement(inertia, tag)
+            tag_elem.text = f"{value:.8f}"
+
+        set_inertia_tag('ixx', ixx)
+        set_inertia_tag('iyy', iyy)
+        set_inertia_tag('izz', izz)
+        set_inertia_tag('ixy', 0.0)
+        set_inertia_tag('ixz', 0.0)
+        set_inertia_tag('iyz', 0.0)
+
+    # Salvataggio
     tree.write(file_path, encoding='utf-8', xml_declaration=True)
-    if geometry_type == "cylinder":
-        print(f"✔️ File aggiornato con massa = {vol*density} kg (cylinder: radius={radius} m, height={length} m)")
-    elif geometry_type == "box":
-        print(f"✔️ File aggiornato con massa = {vol*density} kg (box: width={width} m, height={height} m, depth={depth} m)")
 
+    print(f"✅ {os.path.basename(file_path)} aggiornato:")
+    print(f"    ➤ Tipo: {geometry_type}")
+    print(f"    ➤ Volume: {volume:.6f} m³")
+    print(f"    ➤ Massa: {mass:.4f} kg")
+    print(f"    ➤ Inerzia: ixx={ixx:.6e}, iyy={iyy:.6e}, izz={izz:.6e}")
 
-def update_sdf_inertia(file_path, new_mass):
-    tree = ET.parse(file_path)
-    root = tree.getroot()
-
-    # Namespace fix (if any)
-    ET.register_namespace('', "http://sdformat.org/sdf/1.6")
-
-    # Trova <link>/<inertial>
-    for inertial in root.iter('inertial'):
-        # Update mass
-        mass_element = inertial.find('mass')
-        mass_element.text = str(new_mass)
-
-        # Trova dimensioni dal cilindro
-        geometry_type = None
-        ixx = iyy = izz = None  # valori di default
-
-        for link in root.iter('link'):
-            for collision in link.findall('collision'):
-                geom = collision.find('geometry')
-
-                # === Caso cilindro ===
-                cyl = geom.find('cylinder')
-                if cyl is not None:
-                    radius = float(cyl.find('radius').text)
-                    length = float(cyl.find('length').text)
-                    ixx, iyy, izz = compute_cylinder_inertia(new_mass, radius, length)
-                    geometry_type = "cylinder"
-                    break
-
-                # === Caso box ===
-                box = geom.find('box')
-                if box is not None:
-                    size_str = box.find('size').text  # es. "0.1 0.2 0.05"
-                    size_vals = list(map(float, size_str.strip().split()))
-                    if len(size_vals) != 3:
-                        raise ValueError("Il box deve avere tre dimensioni (x y z)!")
-                    width, height, depth = size_vals
-                    ixx, iyy, izz = compute_box_inertia(new_mass, width, height, depth)
-                    geometry_type = "box"
-                    break
-
-        # Se non ho trovato nulla
-        if geometry_type is None:
-            raise ValueError("Diocanestro, non trovo né un cilindro né un box nel file SDF!")
-
-        print(f"✔️ Geometria riconosciuta: {geometry_type}, inerzia aggiornata.")
-
-        # Scrittura dei valori nella sezione inertia
-        inertia = inertial.find('inertia')
-        inertia.find('ixx').text = f"{ixx:.8f}"
-        inertia.find('iyy').text = f"{iyy:.8f}"
-        inertia.find('izz').text = f"{izz:.8f}"
-        inertia.find('ixy').text = "0.0"
-        inertia.find('ixz').text = "0.0"
-        inertia.find('iyz').text = "0.0"
-
-    # Salva il nuovo file
-    tree.write(file_path, encoding='utf-8', xml_declaration=True)
-    if geometry_type == "cylinder":
-        print(f"✔️ File aggiornato con massa = {new_mass} kg (cylinder: radius={radius} m, height={length} m)")
-    elif geometry_type == "box":
-        print(f"✔️ File aggiornato con massa = {new_mass} kg (box: width={width} m, height={height} m, depth={depth} m)")
-
-
-# Esempio d’uso:
-# update_sdf_inertia("modello_bread.sdf", 1.0)
-
+# MAIN
 if __name__ == "__main__":
-    # MASSE PERSONALIZZATE
-    #masses=[0.5,0.5,0.2,0.2,0.1]       # pesi default
-    #masses=[1,1,1,1,1]
-    #for ingredient,mass in zip(ingredients,masses):
-        #sdf_file=f"ingredients_models/{ingredient}/model.sdf"
-        #update_sdf_inertia(sdf_file, mass)  
-    # BASATO SU DENSITÀ 
-    ingredients=['bread','meat','cheese', 'tomato','salad']
-    density=50000
+    ingredients = ['bread', 'meat', 'cheese', 'tomato', 'salad']
+    density = 50000  # in kg/m³, regolabile
+
     for ingredient in ingredients:
-        sdf_file=f"ingredients_models/{ingredient}/model.sdf"
-        update_with_density(sdf_file,density)
+        sdf_file = f"ingredients_models/{ingredient}/model.sdf"
+        if not os.path.isfile(sdf_file):
+            print(f"⚠️  File non trovato: {sdf_file}")
+            continue
+        try:
+            update_with_density(sdf_file, density)
+        except Exception as e:
+            print(f"❌ Errore in {sdf_file}: {str(e)}")
