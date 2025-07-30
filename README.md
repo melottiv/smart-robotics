@@ -5,7 +5,7 @@
 </p>
 <br>
 
-<img src="https://github.com/pietrolechthaler/UR5-Pick-and-Place-Simulation/blob/main/main.png">
+<img src="https://github.com/melottiv/smart-robotics/blob/frenci/main.png">
 
 ## Table of contents
 - [Description](#description)
@@ -71,7 +71,7 @@ roslaunch ninja_manager ninja_world.launch
 ```
 Spawn all the ingredients
 ```
-rosrun ninja_manager ninja-manager.py -n 5
+rosrun ninja_manager ninja-manager.py 
 ```
 Start the kinematics process
 ```
