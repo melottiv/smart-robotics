@@ -1,11 +1,11 @@
-<img width="138" height="102" alt="image" src="https://github.com/user-attachments/assets/292edbf4-13ba-4401-b42b-22821d241c88" /><p align="center">
+<p align="center">
   <h2 align="center">Smart Robotics Project: burgerBot </h2>
 
   
 </p>
 <br>
 
-<img src="[https://github.com/melottiv/smart-robotics/blob/frenci/main.png](https://github.com/melottiv/smart-robotics/blob/frenci/main.png)">
+<img src="https://github.com/melottiv/smart-robotics/blob/frenci/main.png">
 
 ## Table of contents
 - [Description](#description)
@@ -22,7 +22,7 @@ The goals of this project are:
 - simulate the iteration of a UR5 robot with simple shapes, meant to stand in for ingredients
 - The robotic arm must be able to detect ingredients and follow user specifications to stack them into a burger
 
-<img src="[https://github.com/pietrolechthaler/UR5-Pick-and-Place-Simulation/blob/main/intro.gif](https://github.com/melottiv/smart-robotics/blob/frenci/intro.gif">
+<img src="https://github.com/melottiv/smart-robotics/blob/frenci/intro.gif">
 
 ### Folder
 ```
