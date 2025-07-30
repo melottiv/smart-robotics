@@ -12,8 +12,9 @@ from pyquaternion import Quaternion as PyQuaternion
 import numpy as np
 from gazebo_ros_link_attacher.srv import SetStatic, SetStaticRequest, SetStaticResponse
 from gazebo_ros_link_attacher.srv import Attach, AttachRequest, AttachResponse
-from collections import defaultdict
+from collections import defaultdict,Counter
 import json
+
 
 
 
@@ -237,51 +238,72 @@ def set_model_fixed(model_name):
     req.link_name_2="link"
     attach_srv.call(req)
 
-import spacy
-
 def get_ingredient_list_from_user():
     print("\nHello! What kind of burger would you like?")
     print("\n\tAvailable ingredients are: bread, meat, cheese, tomato, and salad")
+    
     nlp = spacy.load("en_core_web_sm") 
-    user_input = input("\nBurger description: ")
+    user_input = input("\nBurger description: ").lower()
 
     ingredients = {"bread", "meat", "cheese", "tomato", "salad"}
-    doc = nlp(user_input.lower())
-    
-    explicitly_included = set()
-    explicitly_excluded = set()
+    doc = nlp(user_input)
+
+    ingredient_counts = Counter()
+    excluded_ingredients = set()
+    explicitly_mentioned = set()
+
+    # Flag per identificare frasi di tipo "only meat", "just cheese", ecc.
+    exclusive_mode = any(word in user_input for word in ["only", "just", "nothing but", "solo", "esclusivamente"])
 
     for token in doc:
         word = token.text.lower()
         if word in ingredients:
             negated = False
+            double = False
 
-            # Controllo figli (es. "no cheese")
+            # NEGAZIONI
             for child in token.children:
-                if child.dep_ in {"neg", "det"} and child.text.lower() in {"no", "not", "any", "without","except"}:
+                if child.dep_ in {"neg", "det"} and child.text in {"no", "not", "any", "without", "except"}:
                     negated = True
-
-            # Controllo parole a sinistra (es. "without meat")
             for left in token.lefts:
-                if left.text.lower() in {"no", "not", "any", "without","except"}:
+                if left.text in {"no", "not", "any", "without", "except"}:
                     negated = True
-
-            # Controllo anche antenati (es. "I don't want cheese")
             for ancestor in token.ancestors:
                 for child in ancestor.children:
                     if child.dep_ == "neg":
                         negated = True
 
+            # QUANTITÀ DOPPIA
+            for modifier in token.lefts:
+                if modifier.text in {"double", "extra", "more", "a lot of", "tons of"}:
+                    double = True
+
             if negated:
-                explicitly_excluded.add(word)
+                excluded_ingredients.add(word)
             else:
-                explicitly_included.add(word)
+                explicitly_mentioned.add(word)
+                ingredient_counts[word] += 2 if double else 1
 
-    if explicitly_included:
-        return list(explicitly_included)
+    # Comportamento corretto per aggiungere gli altri ingredienti:
+    if exclusive_mode or len(explicitly_mentioned) > 1:
+        # caso esclusivo o più ingredienti menzionati: uso solo quelli
+        pass
+    elif len(explicitly_mentioned) == 1:
+        # caso un solo ingrediente menzionato esplicitamente (es. "double cheese")
+        # aggiungo tutti gli altri che non sono esclusi e non sono menzionati esplicitamente
+        for ing in ingredients - excluded_ingredients - explicitly_mentioned:
+            ingredient_counts[ing] = 1
     else:
-        return list(ingredients - explicitly_excluded)
+        # nessun ingrediente menzionato, includo tutto tranne esclusi
+        for ing in ingredients - excluded_ingredients:
+            ingredient_counts[ing] = 1
 
+    # Costruisco lista finale con ripetizioni
+    final_ingredients = []
+    for ing, count in ingredient_counts.items():
+        final_ingredients.extend([ing] * count)
+
+    return final_ingredients
 
 """
 def get_ingredient_list_from_gpt():
@@ -314,7 +336,7 @@ def get_ingredient_list_from_gpt():
     except Exception as e:
         print("Errore interpretando la risposta GPT, uso fallback:", e)
         return ['bread', 'meat', 'cheese', 'tomato', 'bread']
-"""
+
 
 def burger_sort_gpt(elements, ingredient_order):
     ingredient_map = defaultdict(list)
@@ -333,25 +355,38 @@ def burger_sort_gpt(elements, ingredient_order):
         else:
             print(f"Ingrediente mancante: {ingredient}")
     return ordered_models
+"""
 
+def select_ingredients(request_list, workspace_ingredients):
+    available = defaultdict(list)
+    for name, pos in workspace_ingredients:
+        available[name].append(pos)
 
-def order_elements_simple(user_ingredients, elements):
-    filtered = [el for el in elements if el[0] in user_ingredients]
+    selected = []
 
-    # Ordina per posizione
-    filtered_sorted = sorted(filtered, key=lambda x: x[1].position.x)
-
-    # Estrai tutte le occorrenze di pane e rimuovile temporaneamente
-    bread_elements = [el for el in filtered_sorted if el[0] == "bread"]
-    others = [el for el in filtered_sorted if el[0] != "bread"]
-
-    if bread_elements:
-        first_bread = bread_elements[0]
-        last_bread = bread_elements[-1]
-        # metti il primo pane all'inizio, l'ultimo alla fine
-        return [first_bread] + others + [last_bread]
+    # 2. Aggiungi un pane all'inizio
+    if available["bread"] and 'bread' in request_list:
+        selected.append(("bread", available["bread"].pop(0)))
     else:
-        return filtered_sorted
+        raise ValueError("Manca il pane di base")
+
+    # 3. Aggiungi gli ingredienti nella sequenza della richiesta (esclusi i 'bread')
+    for ingredient in request_list:
+        if ingredient == "bread":
+            continue  # il pane si gestisce a parte
+        if available[ingredient]:
+            selected.append((ingredient, available[ingredient].pop(0)))
+        else:
+            raise ValueError(f"Ingrediente richiesto non disponibile: {ingredient}")
+
+    # 4. Aggiungi un pane alla fine
+    if available["bread"] and 'bread' in request_list:
+        selected.append(("bread", available["bread"].pop(0)))
+    else:
+        raise ValueError("Manca il pane superiore")
+
+    return selected
+
 
 
 if __name__ == "__main__":
@@ -384,7 +419,7 @@ if __name__ == "__main__":
     elements = get_elements_pos(vision=True)
 
     user_ingredients = get_ingredient_list_from_user()
-    ordered_models = order_elements_simple(user_ingredients=user_ingredients,elements=elements)
+    ordered_models = select_ingredients(request_list=user_ingredients, workspace_ingredients=elements)
     x, y = PILING_LOCATION[0], PILING_LOCATION[1]
     cumulative_height = 0.0
     last_gazebo_model_name= "ground_plane"

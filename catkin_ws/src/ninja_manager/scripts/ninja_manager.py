@@ -24,13 +24,13 @@ spawn_name = '_spawn'
 spawn_pos = (-0.38, -0.35, 0.74)
 spawn_dim = (0.25, 0.2)
 min_space = 0.010
-min_distance = 0.15
+min_distance = 0.1
 
 ingredientDict = {
-    'bread':    (0, (0.06, 0.06, 0.025)),     
-    'tomato':   (1, (0.04, 0.04, 0.01)),      
+    'bread':    (0, (0.06, 0.06, 0.015)),     
+    'tomato':   (1, (0.04, 0.04, 0.002)),      
     'cheese':   (2, (0.06, 0.06, 0.003)),    
-    'meat':     (3, (0.05, 0.05, 0.015)),     
+    'meat':     (3, (0.05, 0.05, 0.007)),     
     'salad':    (4, (0.06, 0.06, 0.005))       
 }
 
@@ -103,7 +103,8 @@ def spawn_model(model, pos, name=None, ref_frame='world'):
 
 
 # Lista ordinata degli ingredienti da spawnare ogni volta
-fixed_ingredient_order = ['bread', 'meat', 'cheese', 'salad', 'tomato','bread']
+#fixed_ingredient_order = ['bread', 'meat', 'cheese', 'salad', 'tomato','bread']
+fixed_ingredient_order = ['bread', 'meat', 'cheese', 'salad', 'tomato', 'meat', 'cheese', 'salad', 'tomato','bread']
 
 
 def spawn_all_ingredients():
