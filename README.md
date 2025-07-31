@@ -26,7 +26,7 @@ The goals of this project are:
 
 ### Folder
 ```
-FactoryNinja-precision-sorting-to-get-the-chaos-off/catkin_ws/src
+smart-robotics/catkin_ws/src
 ├── ninja_manager
 ├── vision
 ├── motion_planning
